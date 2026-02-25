@@ -1,9 +1,7 @@
 ---
-
 # binapi Grav Plugin
 
 A secure, configurable REST API plugin for [Grav CMS](https://getgrav.org), enabling automated article and image creation via authenticated endpoints. Ideal for workflow automation and integration with tools like n8n or zapier.
-
 ---
 
 ## Table of Contents
@@ -14,8 +12,9 @@ A secure, configurable REST API plugin for [Grav CMS](https://getgrav.org), enab
 - [Configuration](#configuration)
 - [Authentication](#authentication)
 - [Usage](#usage)
-    - [Create Article Endpoint](#create-article-endpoint)
-    - [Upload Image Endpoint](#upload-image-endpoint)
+  - [Create Article Endpoint](#create-article-endpoint)
+  - [Upload Image Endpoint](#upload-image-endpoint)
+  - [Update Article Endpoint](#update-article-endpoint)
 - [Integration Example: n8n](#integration-example-n8n)
 - [Security Notes](#security-notes)
 - [Contributing](#contributing)
@@ -50,15 +49,14 @@ git clone https://github.com/Noosan1/binapi/binapi.git
 ```
 
 2. **Move to Plugins Folder:**
-Place the `binapi` directory into your site's `user/plugins/` directory.
+   Place the `binapi` directory into your site's `user/plugins/` directory.
 3. **Enable the Plugin:**
-    - Via Admin Panel: Go to Plugins > binapi > Enable.
-    - Or in `user/config/plugins/binapi.yaml`:
+   - Via Admin Panel: Go to Plugins > binapi > Enable.
+   - Or in `user/config/plugins/binapi.yaml`:
 
 ```yaml
 enabled: true
 ```
-
 
 ---
 
@@ -69,8 +67,8 @@ All plugin settings are available via the Admin Panel or by editing `user/config
 ```yaml
 enabled: true
 require_auth: true
-api_token: 'your_secure_token_here'
-default_folder: '02.blog'
+api_token: "your_secure_token_here"
+default_folder: "02.blog"
 allow_folder_creation: true
 allow_article_creation: true
 allow_image_upload: true
@@ -92,15 +90,15 @@ allow_image_upload: true
 binapi supports two authentication methods:
 
 1. **Bearer Token (Recommended for API):**
-    - Set `require_auth: true` and provide a strong `api_token`.
-    - All API requests must include:
+   - Set `require_auth: true` and provide a strong `api_token`.
+   - All API requests must include:
 
 ```
 Authorization: Bearer your_secure_token_here
 ```
 
 2. **Grav Session (Browser/Logged-in User):**
-    - If authenticated via the Grav Login plugin, requests are allowed.
+   - If authenticated via the Grav Login plugin, requests are allowed.
 
 ---
 
@@ -111,7 +109,7 @@ Authorization: Bearer your_secure_token_here
 - **URL:** `/binapi/create-article`
 - **Method:** `POST`
 - **Headers:**
-`Authorization: Bearer your_secure_token_here` (if `require_auth` is enabled)
+  `Authorization: Bearer your_secure_token_here` (if `require_auth` is enabled)
 - **Body (JSON):**
 
 ```json
@@ -129,13 +127,12 @@ Authorization: Bearer your_secure_token_here
 { "success": true, "message": "Article created" }
 ```
 
-
 ### Upload Image Endpoint
 
 - **URL:** `/binapi/upload-image`
 - **Method:** `POST`
 - **Headers:**
-`Authorization: Bearer your_secure_token_here` (if `require_auth` is enabled)
+  `Authorization: Bearer your_secure_token_here` (if `require_auth` is enabled)
 - **Body (JSON):**
 
 ```json
@@ -152,20 +149,19 @@ Authorization: Bearer your_secure_token_here
 { "success": true, "url": "/user/pages/02.blog/image.png" }
 ```
 
-
 ---
 
 ## Integration Example: n8n
 
 1. **Create Credential:**
-    - Type: HTTP Request (Header Auth)
-    - Header Name: `Authorization`
-    - Value: `Bearer your_secure_token_here`
+   - Type: HTTP Request (Header Auth)
+   - Header Name: `Authorization`
+   - Value: `Bearer your_secure_token_here`
 2. **HTTP Request Node Example:**
-    - URL: `https://your-grav-site.com/binapi/create-article`
-    - Method: `POST`
-    - Authentication: Select your credential
-    - Body Content Type: JSON
+   - URL: `https://your-grav-site.com/binapi/create-article`
+   - Method: `POST`
+   - Authentication: Select your credential
+   - Body Content Type: JSON
 
 ---
 

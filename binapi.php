@@ -1,4 +1,5 @@
 <?php
+
 namespace Grav\Plugin;
 
 use Grav\Common\Plugin;
@@ -49,6 +50,11 @@ class BinapiPlugin extends Plugin
         // Article creation endpoint
         if ($route === '/binapi/create-article' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $this->handleCreateArticle();
+        }
+
+        // Article update endpoint
+        if ($route === '/binapi/update-article' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->handleUpdateArticle();
         }
 
         // Image upload endpoint
@@ -138,6 +144,72 @@ class BinapiPlugin extends Plugin
         }
 
         $this->sendJson(['success' => true, 'message' => 'Article created']);
+    }
+
+    /**
+     * Handle article update via API.
+     */
+    private function handleUpdateArticle()
+    {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $folder = $data['folder'] ?? null;
+        $filename = $data['filename'] ?? 'post.md';
+        $newContent = $data['content'] ?? null;
+        $newTitle = $data['title'] ?? null;
+
+        if (!$folder) {
+            $this->sendJson(['error' => 'Missing folder'], 400);
+        }
+
+        if ($newContent === null && $newTitle === null) {
+            $this->sendJson(['error' => 'No content or title provided to update'], 400);
+        }
+
+        $pagesDir = $this->grav['locator']->findResource('user://pages', true);
+        $folderPath = $pagesDir . '/' . $folder;
+        $mdFile = $folderPath . '/' . $filename;
+
+        if (!file_exists($mdFile)) {
+            $this->sendJson(['error' => 'Article file does not exist'], 404);
+        }
+
+        // Read existing content
+        $existingContent = file_get_contents($mdFile);
+        if ($existingContent === false) {
+            $this->sendJson(['error' => 'Failed to read article file'], 500);
+        }
+
+        // Parse existing frontmatter and body
+        $frontmatter = '';
+        $body = $existingContent;
+
+        if (preg_match('/^---\s*[\r\n]+(.+?)[\r\n]+---/s', $existingContent, $matches)) {
+            $frontmatter = $matches[1];
+            $body = substr($existingContent, strlen($matches[0]));
+        }
+
+        // Update title if provided
+        if ($newTitle !== null) {
+            if (preg_match('/^title:\s*["\']?([^"\']+)["\']?/m', $frontmatter, $matches)) {
+                $frontmatter = preg_replace('/^title:\s*["\']?[^"\']+["\']?/m', 'title: "' . addslashes($newTitle) . '"', $frontmatter);
+            } else {
+                $frontmatter .= "\ntitle: \"$newTitle\"";
+            }
+        }
+
+        // Update body if provided
+        if ($newContent !== null) {
+            $body = $newContent;
+        }
+
+        // Reconstruct content
+        $writeContent = "---\n" . $frontmatter . "\n---\n" . ltrim($body);
+
+        if (!file_put_contents($mdFile, $writeContent)) {
+            $this->sendJson(['error' => 'Failed to write article file'], 500);
+        }
+
+        $this->sendJson(['success' => true, 'message' => 'Article updated']);
     }
 
     /**
