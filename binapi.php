@@ -178,7 +178,7 @@ class BinapiPlugin extends Plugin
         }
 
         // Save image in article folder
-        $imageDir = $this->grav['locator']->findResource('user://pages', true) . '/02.' . $folder;
+        $imageDir = $this->grav['locator']->findResource('user://pages', true) . '/' . $folder;
         if (!file_exists($imageDir)) {
             if ($this->config->get('plugins.binapi.allow_folder_creation', true)) {
                 if (!mkdir($imageDir, 0755, true)) {
@@ -198,7 +198,7 @@ class BinapiPlugin extends Plugin
 
         $this->sendJson([
             'success' => true,
-            'url' => "/user/pages/02.$folder/$filename"
+            'url' => "/user/pages/$folder/$filename"
         ]);
     }
 
