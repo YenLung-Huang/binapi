@@ -1,11 +1,11 @@
 name: binapi
-version: 1.0.0
-description: 'Configuration for the binapi plugin'
+version: 1.1.1
+description: "Configuration for the binapi plugin"
 icon: plug
 author:
   name: Johnny Larson
-  email: 
-  url: 
+  email:
+  url:
 homepage: https://github.com/Noosan1/binapi/
 keywords: [grav, plugin, api, binapi]
 license: MIT
@@ -39,7 +39,7 @@ form:
       type: text
       label: API Token (Secure Bearer Token)
       size: medium
-      default: ''
+      default: ""
       validate:
         type: string
 
@@ -47,7 +47,7 @@ form:
       type: text
       label: Default Folder
       size: medium
-      default: 'blog'
+      default: "blog"
       validate:
         type: string
 

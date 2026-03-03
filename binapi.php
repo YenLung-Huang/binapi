@@ -135,7 +135,7 @@ class BinapiPlugin extends Plugin
         if (preg_match('/^---/', $content)) {
             $writeContent = $content;
         } else {
-            $frontmatter = "---\ntitle: \"$title\"\n---\n";
+            $frontmatter = "---\ntitle: \"$title\"\npublished: true\n---\n";
             $writeContent = $frontmatter . $content;
         }
 
@@ -173,37 +173,43 @@ class BinapiPlugin extends Plugin
             $this->sendJson(['error' => 'Article file does not exist'], 404);
         }
 
-        // Read existing content
         $existingContent = file_get_contents($mdFile);
-        if ($existingContent === false) {
-            $this->sendJson(['error' => 'Failed to read article file'], 500);
-        }
 
-        // Parse existing frontmatter and body
-        $frontmatter = '';
-        $body = $existingContent;
+        // 判斷傳入的 content 是否已經包含 frontmatter
+        $hasNewFrontmatter = ($newContent !== null && preg_match('/^---[\r\n]/', $newContent));
 
-        if (preg_match('/^---\s*[\r\n]+(.+?)[\r\n]+---/s', $existingContent, $matches)) {
-            $frontmatter = $matches[1];
-            $body = substr($existingContent, strlen($matches[0]));
-        }
+        if ($hasNewFrontmatter) {
+            // 方案 A：完全替換模式（傳入完整 content + frontmatter）
+            $writeContent = $newContent;
+        } else {
+            // 方案 B：部分更新模式（只傳 title 或不帶 frontmatter 的 content）
 
-        // Update title if provided
-        if ($newTitle !== null) {
-            if (preg_match('/^title:\s*["\']?([^"\']+)["\']?/m', $frontmatter, $matches)) {
-                $frontmatter = preg_replace('/^title:\s*["\']?[^"\']+["\']?/m', 'title: "' . addslashes($newTitle) . '"', $frontmatter);
-            } else {
-                $frontmatter .= "\ntitle: \"$newTitle\"";
+            // 解析現有的 frontmatter
+            $frontmatter = '';
+            $body = $existingContent;
+
+            if (preg_match('/^---\s*[\r\n]+(.+?)\s*---/s', $existingContent, $matches)) {
+                $frontmatter = $matches[1];
+                $body = substr($existingContent, strlen($matches[0]));
             }
-        }
 
-        // Update body if provided
-        if ($newContent !== null) {
-            $body = $newContent;
-        }
+            // 更新 title
+            if ($newTitle !== null) {
+                if (preg_match('/^title:\s*["\']?([^"\']+)["\']?/m', $frontmatter, $matches)) {
+                    $frontmatter = preg_replace('/^title:\s*["\']?[^"\']+["\']?/m', 'title: "' . addslashes($newTitle) . '"', $frontmatter);
+                } else {
+                    $frontmatter .= "\ntitle: \"$newTitle\"";
+                }
+            }
 
-        // Reconstruct content
-        $writeContent = "---\n" . $frontmatter . "\n---\n" . ltrim($body);
+            // 更新 body
+            if ($newContent !== null) {
+                $body = $newContent;
+            }
+
+            // 重組
+            $writeContent = "---\n" . $frontmatter . "\n---\n" . ltrim($body);
+        }
 
         if (!file_put_contents($mdFile, $writeContent)) {
             $this->sendJson(['error' => 'Failed to write article file'], 500);
