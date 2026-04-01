@@ -65,6 +65,11 @@ class BinapiPlugin extends Plugin
             }
             $this->handleUploadImage();
         }
+
+        // List articles endpoint
+        if ($route === '/binapi/list-articles' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+            $this->handleListArticles();
+        }
     }
 
     /**
@@ -278,6 +283,127 @@ class BinapiPlugin extends Plugin
             'success' => true,
             'url' => "/user/pages/$folder/$filename"
         ]);
+    }
+
+    /**
+     * Handle article listing via API.
+     *
+     * GET /binapi/list-articles?folder=01.blog
+     *
+     * Query parameters:
+     *   folder    (optional) Subfolder path under /user/pages/. Defaults to default_folder.
+     *             If not provided and no default_folder configured, lists all immediate
+     *             subfolders of /user/pages/.
+     *   recursive (optional, default: false) Set to "1" or "true" to recurse into subfolders.
+     *
+     * Returns a JSON array of article objects:
+     *   {
+     *     "folder":   "01.blog/2026-04-my-post",
+     *     "filename": "post.zh-tw.md",
+     *     "title":    "My Post Title",         // extracted from frontmatter, null if missing
+     *     "date":     "2026-04-01",             // extracted from frontmatter, null if missing
+     *     "published": true                    // extracted from frontmatter, defaults to true
+     *   }
+     */
+    private function handleListArticles()
+    {
+        $pagesDir = $this->grav['locator']->findResource('user://pages', true);
+        $defaultFolder = $this->config->get('plugins.binapi.default_folder', '');
+
+        $requestedFolder = $_GET['folder'] ?? $defaultFolder;
+        $recursive = filter_var($_GET['recursive'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        // Resolve and validate the base directory
+        $baseDir = $pagesDir;
+        if ($requestedFolder !== '') {
+            // Prevent path traversal
+            $baseDir = realpath($pagesDir . '/' . $requestedFolder);
+            if ($baseDir === false || strpos($baseDir, $pagesDir) !== 0) {
+                $this->sendJson(['error' => 'Invalid folder path'], 400);
+            }
+        }
+
+        if (!is_dir($baseDir)) {
+            $this->sendJson(['error' => 'Folder does not exist'], 404);
+        }
+
+        $articles = $this->scanArticles($baseDir, $pagesDir, $recursive);
+
+        $this->sendJson([
+            'success' => true,
+            'folder'  => $requestedFolder,
+            'count'   => count($articles),
+            'articles' => $articles,
+        ]);
+    }
+
+    /**
+     * Recursively (or not) scan a directory for .md files and return article metadata.
+     *
+     * @param string $dir       Absolute path to scan
+     * @param string $pagesDir  Absolute path to /user/pages/ (used to compute relative folder)
+     * @param bool   $recursive Whether to descend into subdirectories
+     * @return array
+     */
+    private function scanArticles(string $dir, string $pagesDir, bool $recursive): array
+    {
+        $articles = [];
+
+        foreach (new \DirectoryIterator($dir) as $item) {
+            if ($item->isDot()) {
+                continue;
+            }
+
+            if ($item->isDir() && $recursive) {
+                $articles = array_merge(
+                    $articles,
+                    $this->scanArticles($item->getPathname(), $pagesDir, true)
+                );
+                continue;
+            }
+
+            if (!$item->isFile() || $item->getExtension() !== 'md') {
+                continue;
+            }
+
+            $relativeFolder = ltrim(str_replace($pagesDir, '', $item->getPath()), '/');
+            $filename       = $item->getFilename();
+            $raw            = file_get_contents($item->getPathname());
+
+            // Extract frontmatter block
+            $title     = null;
+            $date      = null;
+            $published = true;
+
+            if (preg_match('/^---\s*[\r\n]+(.*?)[\r\n]+---/s', $raw, $fm)) {
+                $block = $fm[1];
+
+                if (preg_match('/^title:\s*["\']?(.+?)["\']?\s*$/m', $block, $m)) {
+                    $title = trim($m[1], "\"' ");
+                }
+                if (preg_match('/^date:\s*["\']?(.+?)["\']?\s*$/m', $block, $m)) {
+                    $date = trim($m[1], "\"' ");
+                }
+                if (preg_match('/^published:\s*(true|false)\s*$/mi', $block, $m)) {
+                    $published = strtolower($m[1]) === 'true';
+                }
+            }
+
+            $articles[] = [
+                'folder'    => $relativeFolder,
+                'filename'  => $filename,
+                'title'     => $title,
+                'date'      => $date,
+                'published' => $published,
+            ];
+        }
+
+        // Sort by folder + filename for deterministic output
+        usort($articles, fn($a, $b) =>
+            strcmp($a['folder'] . '/' . $a['filename'], $b['folder'] . '/' . $b['filename'])
+        );
+
+        return $articles;
     }
 
     /**
