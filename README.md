@@ -15,6 +15,7 @@ A secure, configurable REST API plugin for [Grav CMS](https://getgrav.org), enab
   - [Create Article Endpoint](#create-article-endpoint)
   - [Upload Image Endpoint](#upload-image-endpoint)
   - [Update Article Endpoint](#update-article-endpoint)
+  - [List Articles Endpoint](#list-articles-endpoint)
 - [Integration Example: n8n](#integration-example-n8n)
 - [Security Notes](#security-notes)
 - [Contributing](#contributing)
@@ -26,9 +27,11 @@ A secure, configurable REST API plugin for [Grav CMS](https://getgrav.org), enab
 
 - Create articles via REST API
 - Upload images via REST API
+- Update articles via REST API (full replace or partial frontmatter/body update)
+- **List articles via REST API** — browse articles in any folder with title/date/published metadata
 - Dual authentication: Grav session or Bearer token
 - Configurable permissions for folder, article, and image creation
-- Designed for automation (e.g., n8n, Zapier, custom scripts)
+- Designed for automation (e.g., n8n, Zapier, AI agents, custom scripts)
 
 ---
 
@@ -148,6 +151,54 @@ Authorization: Bearer your_secure_token_here
 ```json
 { "success": true, "url": "/user/pages/02.blog/image.png" }
 ```
+
+### List Articles Endpoint
+
+- **URL:** `/binapi/list-articles`
+- **Method:** `GET`
+- **Headers:**
+  `Authorization: Bearer your_secure_token_here` (if `require_auth` is enabled)
+- **Query Parameters:**
+
+| Parameter   | Required | Default          | Description |
+|-------------|----------|------------------|-------------|
+| `folder`    | No       | `default_folder` | Subfolder path under `/user/pages/` (e.g., `01.blog`). Omit to scan the whole pages root. |
+| `recursive` | No       | `false`          | Set to `true` or `1` to recurse into all subfolders. |
+
+- **Example Request:**
+
+```
+GET /binapi/list-articles?folder=01.blog&recursive=true
+Authorization: Bearer your_secure_token_here
+```
+
+- **Response:**
+
+```json
+{
+  "success": true,
+  "folder": "01.blog",
+  "count": 2,
+  "articles": [
+    {
+      "folder": "01.blog/2026-04-my-post",
+      "filename": "post.zh-tw.md",
+      "title": "My Article Title",
+      "date": "2026-04-01",
+      "published": true
+    },
+    {
+      "folder": "01.blog/2026-03-older-post",
+      "filename": "post.zh-tw.md",
+      "title": "An Older Post",
+      "date": "2026-03-15",
+      "published": false
+    }
+  ]
+}
+```
+
+Results are sorted alphabetically by `folder/filename`. Use `date` from the response to sort by date on the client side.
 
 ---
 
