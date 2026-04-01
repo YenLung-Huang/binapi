@@ -83,3 +83,14 @@ form:
         0: Disabled
       validate:
         type: bool
+
+    allow_article_deletion:
+      type: toggle
+      label: Allow Article Deletion
+      highlight: 0
+      default: 0
+      options:
+        1: Enabled
+        0: Disabled
+      validate:
+        type: bool

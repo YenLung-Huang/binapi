@@ -14,3 +14,6 @@ allow_folder_creation: true
 
 # Allow creation of new articles via API
 allow_article_creation: true
+
+# Allow deletion of articles via API (disabled by default for safety)
+allow_article_deletion: false

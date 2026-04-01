@@ -39,37 +39,52 @@ class BinapiPlugin extends Plugin
      */
     public function onPageInitialized()
     {
+        $uri = $this->grav['uri'];
+        $route = rtrim($uri->path(), '/');
+
+        // Only handle /binapi/* routes
+        if (strpos($route, '/binapi/') !== 0) {
+            return;
+        }
+
         // Enforce authentication if enabled in config
         if ($this->config->get('plugins.binapi.require_auth')) {
             $this->authenticateRequest();
         }
 
-        $uri = $this->grav['uri'];
-        $route = rtrim($uri->path(), '/');
+        $method = $_SERVER['REQUEST_METHOD'];
 
-        // Article creation endpoint
-        if ($route === '/binapi/create-article' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->handleCreateArticle();
+        $endpoints = [
+            'POST' => [
+                '/binapi/create-article' => 'handleCreateArticle',
+                '/binapi/update-article' => 'handleUpdateArticle',
+                '/binapi/upload-image'   => 'handleUploadImage',
+            ],
+            'DELETE' => [
+                '/binapi/delete-article' => 'handleDeleteArticle',
+            ],
+            'GET' => [
+                '/binapi/list-articles'  => 'handleListArticles',
+            ],
+        ];
+
+        if (!isset($endpoints[$method][$route])) {
+            $this->sendJson(['error' => 'Not found'], 404);
         }
 
-        // Article update endpoint
-        if ($route === '/binapi/update-article' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->handleUpdateArticle();
+        // Permission checks
+        if ($route === '/binapi/create-article' && !$this->config->get('plugins.binapi.allow_article_creation', true)) {
+            $this->sendJson(['error' => 'Article creation is disabled'], 403);
+        }
+        if ($route === '/binapi/upload-image' && !$this->config->get('plugins.binapi.allow_image_upload', true)) {
+            $this->sendJson(['error' => 'Image upload is disabled'], 403);
+        }
+        if ($route === '/binapi/delete-article' && !$this->config->get('plugins.binapi.allow_article_deletion', false)) {
+            $this->sendJson(['error' => 'Article deletion is disabled'], 403);
         }
 
-        // Image upload endpoint
-        if ($route === '/binapi/upload-image' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Check if image upload is allowed
-            if (!$this->config->get('plugins.binapi.allow_image_upload', true)) {
-                $this->sendJson(['error' => 'Image upload is disabled'], 403);
-            }
-            $this->handleUploadImage();
-        }
-
-        // List articles endpoint
-        if ($route === '/binapi/list-articles' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-            $this->handleListArticles();
-        }
+        $handler = $endpoints[$method][$route];
+        $this->$handler();
     }
 
     /**
@@ -98,6 +113,44 @@ class BinapiPlugin extends Plugin
     }
 
     /**
+     * Resolve and validate a folder path under user://pages to prevent path traversal.
+     *
+     * @param string $pagesDir Absolute path to user/pages
+     * @param string $folder   Relative folder path
+     * @param bool   $mustExist Whether the folder must already exist
+     * @return string Validated absolute folder path
+     */
+    private function resolveFolder(string $pagesDir, string $folder, bool $mustExist = true): string
+    {
+        $folderPath = $pagesDir . '/' . $folder;
+
+        if ($mustExist) {
+            $resolved = realpath($folderPath);
+            if ($resolved === false || strpos($resolved, $pagesDir) !== 0) {
+                $this->sendJson(['error' => 'Invalid folder path'], 400);
+            }
+            return $resolved;
+        }
+
+        // For non-existing paths, validate that the canonical form stays within pagesDir
+        // Normalize /../ etc. without requiring the path to exist
+        $normalized = $pagesDir . '/' . preg_replace('#(^|/)\.\.(/|$)#', '/', $folder);
+        if (realpath(dirname($folderPath)) !== false) {
+            $parentResolved = realpath(dirname($folderPath));
+            if (strpos($parentResolved, $pagesDir) !== 0 && $parentResolved !== $pagesDir) {
+                $this->sendJson(['error' => 'Invalid folder path'], 400);
+            }
+        }
+
+        // Extra safety: reject any path containing ..
+        if (preg_match('#(^|[\\/])\.\.($|[\\/])#', $folder)) {
+            $this->sendJson(['error' => 'Invalid folder path'], 400);
+        }
+
+        return $folderPath;
+    }
+
+    /**
      * Handle article creation via API.
      */
     private function handleCreateArticle()
@@ -118,10 +171,13 @@ class BinapiPlugin extends Plugin
         }
 
         $pagesDir = $this->grav['locator']->findResource('user://pages', true);
-        $folderPath = $pagesDir . '/' . $folder;
 
         // Create folder if allowed and doesn't exist
+        $folderPath = $pagesDir . '/' . $folder;
         if (!file_exists($folderPath)) {
+            // Validate path before creating
+            $this->resolveFolder($pagesDir, $folder, false);
+
             if ($this->config->get('plugins.binapi.allow_folder_creation', true)) {
                 if (!mkdir($folderPath, 0755, true)) {
                     $this->sendJson(['error' => 'Failed to create article folder'], 500);
@@ -129,6 +185,9 @@ class BinapiPlugin extends Plugin
             } else {
                 $this->sendJson(['error' => 'Folder does not exist and creation is disabled'], 400);
             }
+        } else {
+            $this->resolveFolder($pagesDir, $folder);
+            $folderPath = realpath($folderPath);
         }
 
         $mdFile = $folderPath . '/' . $filename;
@@ -171,7 +230,7 @@ class BinapiPlugin extends Plugin
         }
 
         $pagesDir = $this->grav['locator']->findResource('user://pages', true);
-        $folderPath = $pagesDir . '/' . $folder;
+        $folderPath = $this->resolveFolder($pagesDir, $folder);
         $mdFile = $folderPath . '/' . $filename;
 
         if (!file_exists($mdFile)) {
@@ -261,8 +320,11 @@ class BinapiPlugin extends Plugin
         }
 
         // Save image in article folder
-        $imageDir = $this->grav['locator']->findResource('user://pages', true) . '/' . $folder;
+        $pagesDir = $this->grav['locator']->findResource('user://pages', true);
+        $imageDir = $pagesDir . '/' . $folder;
         if (!file_exists($imageDir)) {
+            $this->resolveFolder($pagesDir, $folder, false);
+
             if ($this->config->get('plugins.binapi.allow_folder_creation', true)) {
                 if (!mkdir($imageDir, 0755, true)) {
                     $this->sendJson(['error' => 'Failed to create article directory'], 500);
@@ -270,6 +332,8 @@ class BinapiPlugin extends Plugin
             } else {
                 $this->sendJson(['error' => 'Folder does not exist and creation is disabled'], 400);
             }
+        } else {
+            $imageDir = $this->resolveFolder($pagesDir, $folder);
         }
         $filePath = $imageDir . '/' . $filename;
         if (file_exists($filePath)) {
@@ -283,6 +347,43 @@ class BinapiPlugin extends Plugin
             'success' => true,
             'url' => "/user/pages/$folder/$filename"
         ]);
+    }
+
+    /**
+     * Handle article deletion via API.
+     *
+     * DELETE /binapi/delete-article
+     *
+     * Request body (JSON):
+     *   folder   (required) Subfolder path under /user/pages/
+     *   filename (optional, default: "post.md") The markdown file to delete
+     *
+     * Returns:
+     *   { "success": true, "message": "Article deleted" }
+     */
+    private function handleDeleteArticle()
+    {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $folder = $data['folder'] ?? null;
+        $filename = $data['filename'] ?? 'post.md';
+
+        if (!$folder) {
+            $this->sendJson(['error' => 'Missing folder'], 400);
+        }
+
+        $pagesDir = $this->grav['locator']->findResource('user://pages', true);
+        $folderPath = $this->resolveFolder($pagesDir, $folder);
+        $mdFile = $folderPath . '/' . $filename;
+
+        if (!file_exists($mdFile)) {
+            $this->sendJson(['error' => 'Article file does not exist'], 404);
+        }
+
+        if (!unlink($mdFile)) {
+            $this->sendJson(['error' => 'Failed to delete article file'], 500);
+        }
+
+        $this->sendJson(['success' => true, 'message' => 'Article deleted']);
     }
 
     /**
@@ -316,11 +417,7 @@ class BinapiPlugin extends Plugin
         // Resolve and validate the base directory
         $baseDir = $pagesDir;
         if ($requestedFolder !== '') {
-            // Prevent path traversal
-            $baseDir = realpath($pagesDir . '/' . $requestedFolder);
-            if ($baseDir === false || strpos($baseDir, $pagesDir) !== 0) {
-                $this->sendJson(['error' => 'Invalid folder path'], 400);
-            }
+            $baseDir = $this->resolveFolder($pagesDir, $requestedFolder);
         }
 
         if (!is_dir($baseDir)) {
