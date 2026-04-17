@@ -1,0 +1,22 @@
+{
+    "name": "binapi/binapi",
+    "description": "binapi Grav Plugin Tests",
+    "type": "project",
+    "require": {
+        "php": ">=7.3",
+        "phpunit/phpunit": "^9.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Binapi\\Tests\\": "tests/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Binapi\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit"
+    }
+}
