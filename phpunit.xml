@@ -5,15 +5,19 @@
          colors="true"
          verbose="true"
          failOnRisky="true"
-         failOnWarning="true">
+         failOnWarning="true"
+         cacheResultFile=".phpunit.result.cache">
     <testsuites>
         <testsuite name="binapi">
             <directory>tests</directory>
         </testsuite>
     </testsuites>
-    <coverage>
+    <coverage processUncoveredFiles="true">
         <include>
             <directory suffix=".php">tests</directory>
         </include>
+        <report>
+            <text outputFile="build/coverage/coverage.txt"/>
+        </report>
     </coverage>
 </phpunit>

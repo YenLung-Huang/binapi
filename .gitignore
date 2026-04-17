@@ -1,0 +1,22 @@
+# Composer
+/vendor/
+/composer.phar
+composer.lock
+
+# PHPUnit
+.phpunit.result.cache
+.phpunit.cache/
+/build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+/coverage/
