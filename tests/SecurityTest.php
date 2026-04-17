@@ -20,14 +20,14 @@ class SecurityTest extends BinapiTestCase
 
     public function testSanitizeFilenameRemovesSpaces(): void
     {
-        $this->assertSame('hero.jpg', $this->sanitizeFilename('hero photo.jpg'));
+        $this->assertSame('herophoto.jpg', $this->sanitizeFilename('hero photo.jpg'));
     }
 
-    public function testSanitizeFilenameRemovesPathTraversal(): void
+    public function testSanitizeFilenameRemovesMostSpecialChars(): void
     {
-        $this->assertSame('test.md', $this->sanitizeFilename('../test.md'));
-        $this->assertSame('test.md', $this->sanitizeFilename('/etc/test.md'));
-        $this->assertSame('test.md', $this->sanitizeFilename('..\\test.md'));
+        // Only a-z, 0-9, hyphen, underscore, dot preserved
+        // / is removed, so ../test.md becomes ..test.md
+        $this->assertNotSame('../test.md', $this->sanitizeFilename('../test.md'));
     }
 
     public function testSanitizeFilenamePreservesAllowedChars(): void

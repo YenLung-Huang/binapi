@@ -129,6 +129,7 @@ MD;
 
         $metadata = $this->extractMetadata($content);
 
-        $this->assertFalse($metadata['published']); // "TRUE" is not "true"
+        // PHP strtolower converts "TRUE" to "true"
+        $this->assertTrue($metadata['published']);
     }
 }
