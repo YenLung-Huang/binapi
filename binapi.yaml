@@ -1,19 +1,20 @@
 enabled: true
-
-# Require authentication for API endpoints (session or token)
-require_auth: false
-
-# API token for Bearer authentication (leave blank to disable token auth)
-api_token: ''
-
-# Default folder where new articles/images are created or uploaded
-default_folder: '02.blog'
-
-# Allow creation of new folders via API
+require_auth: true
+api_token: ""
+default_folder: "02.blog"
 allow_folder_creation: true
-
-# Allow creation of new articles via API
 allow_article_creation: true
-
-# Allow deletion of articles via API (disabled by default for safety)
+allow_image_upload: true
 allow_article_deletion: false
+
+# Rate limiting
+rate_limit_requests: 60
+rate_limit_window_seconds: 60
+
+# Image compression
+image_max_width: 1920
+image_quality: 85
+
+# Webhook notifications
+webhook_enabled: false
+webhook_url: ""
