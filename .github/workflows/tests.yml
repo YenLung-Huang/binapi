@@ -27,7 +27,7 @@ jobs:
         run: composer install --no-interaction --prefer-dist
 
       - name: Run PHPUnit Tests
-        uses: php-actions/phpunit@v6
+        uses: php-actions/phpunit@v4
         with:
           php_version: '8.2'
-          php_extensions: gd, mbstring, json
+          php_extensions: gd mbstring json
