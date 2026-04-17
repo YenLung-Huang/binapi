@@ -15,10 +15,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install PHP
-        run: |
-          sudo apt-get update && sudo apt-get install -y php8.2 php8.2-cli php8.2-xml php8.2-mbstring
-
       - name: Get Composer Cache
         uses: actions/cache@v4
         with:
@@ -30,5 +26,8 @@ jobs:
       - name: Install Dependencies
         run: composer install --no-interaction --prefer-dist
 
-      - name: Run Tests
-        run: vendor/bin/phpunit
+      - name: Run PHPUnit Tests
+        uses: php-actions/phpunit@v6
+        with:
+          php_version: '8.2'
+          php_extensions: gd, mbstring, json
