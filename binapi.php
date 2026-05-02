@@ -281,6 +281,35 @@ class BinapiPlugin extends Plugin
     }
 
     /**
+     * Build the front-facing URL for an article.
+     *
+     * @param string $folder  e.g. "01.blog/2025-05-sandwich"
+     * @param string $filename e.g. "post.zh-tw.md"
+     * @return string e.g. "/blog/sandwich"
+     */
+    private function buildArticleUrl(string $folder, string $filename): string
+    {
+        // Use configured base_url or fall back to Grav's base_url
+        $baseUrl = $this->config->get('plugins.binapi.base_url', $this->grav['config']->get('system.base_url', ''));
+
+        // Strip numeric prefixes (e.g. "01.", "02.") from each folder segment
+        $segments = explode('/', $folder);
+        $cleanSegments = array_map(static function (string $segment): string {
+            return preg_replace('/^\d+\./', '', $segment);
+        }, $segments);
+
+        $slug = implode('/', $cleanSegments);
+
+        // Strip language suffix from filename (e.g. ".zh-tw" → "")
+        $langSuffix = '';
+        if (preg_match('/\.([a-z]{2}(?:[-_][a-z]{2})?)\.md$/i', $filename, $m)) {
+            $langSuffix = '.' . $m[1];
+        }
+
+        return rtrim($baseUrl, '/') . '/' . $slug . $langSuffix;
+    }
+
+    /**
      * Handle article creation via API.
      */
     private function handleCreateArticle(): void
@@ -346,7 +375,11 @@ class BinapiPlugin extends Plugin
             'title' => $title,
         ]);
 
-        $this->sendJson(['success' => true, 'message' => 'Article created']);
+        $this->sendJson([
+            'success' => true,
+            'message' => 'Article created',
+            'url' => $this->buildArticleUrl($folder, $filename),
+        ]);
     }
 
     /**
@@ -429,7 +462,11 @@ class BinapiPlugin extends Plugin
             'title' => $newTitle,
         ]);
 
-        $this->sendJson(['success' => true, 'message' => 'Article updated']);
+        $this->sendJson([
+            'success' => true,
+            'message' => 'Article updated',
+            'url' => $this->buildArticleUrl($folder, $filename),
+        ]);
     }
 
     /**
@@ -543,7 +580,11 @@ class BinapiPlugin extends Plugin
             )),
         ]);
 
-        $this->sendJson(['success' => true, 'message' => 'Article patched']);
+        $this->sendJson([
+            'success' => true,
+            'message' => 'Article patched',
+            'url' => $this->buildArticleUrl($folder, $filename),
+        ]);
     }
 
     /**
@@ -721,7 +762,11 @@ class BinapiPlugin extends Plugin
             'filename' => $filename,
         ]);
 
-        $this->sendJson(['success' => true, 'message' => 'Article deleted']);
+        $this->sendJson([
+            'success' => true,
+            'message' => 'Article deleted',
+            'url' => $this->buildArticleUrl($folder, $filename),
+        ]);
     }
 
     /**
