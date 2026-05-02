@@ -51,6 +51,14 @@ form:
       validate:
         type: string
 
+    base_url:
+      type: text
+      label: Base URL (e.g. /blog for subdirectory installs)
+      size: medium
+      default: ""
+      validate:
+        type: string
+
     allow_folder_creation:
       type: toggle
       label: Allow Folder Creation
