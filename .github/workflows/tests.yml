@@ -2,9 +2,8 @@ name: Tests
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, '**']
   pull_request:
-    branches: [main, develop]
 
 jobs:
   test:
@@ -15,10 +14,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Get Composer Cache
+      - name: Get Composer Cache Directory
+        id: composer-cache
+        run: echo "dir=$(composer global config --absolute cache-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
         uses: actions/cache@v4
         with:
-          path: ~/.composer/cache
+          path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: |
             ${{ runner.os }}-composer-
@@ -26,8 +29,21 @@ jobs:
       - name: Install Dependencies
         run: composer update --no-interaction --prefer-dist
 
+      - name: PHP Syntax Check
+        run: php -l binapi.php
+
       - name: Run PHPUnit Tests
         uses: php-actions/phpunit@v4
         with:
           php_version: '8.2'
           php_extensions: gd mbstring json
+
+      - name: Check code style
+        run: |
+          if [ -f php-cs-fixer ]; then
+            ./vendor/bin/php-cs-fixer fix --dry-run --diff binapi.php
+          elif [ -f .php-cs-fixer.php ]; then
+            ./vendor/bin/php-cs-fixer fix --dry-run --diff
+          else
+            echo "No php-cs-fixer config found, skipping"
+          fi

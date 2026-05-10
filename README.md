@@ -85,6 +85,7 @@ enabled: true
 require_auth: true
 api_token: "your_secure_token_here"
 default_folder: "02.blog"
+base_url: "/blog"
 allow_folder_creation: true
 allow_article_creation: true
 allow_image_upload: true
@@ -102,6 +103,8 @@ image_quality: 85
 webhook_enabled: false
 webhook_url: ""
 ```
+
+> **Note:** If Grav is installed in a subdirectory (e.g. `yoursite.com/blog/`), set `base_url: "/blog"` so that returned URLs include the correct path prefix.
 
 ---
 
@@ -166,9 +169,12 @@ If the user is logged into Grav admin, sessions are automatically authenticated.
 ```json
 {
   "success": true,
-  "message": "Article created"
+  "message": "Article created",
+  "url": "/blog/my-post"
 }
 ```
+
+> The `url` field returns the front-facing URL of the created article (e.g. `/blog/my-post`). Set `base_url` in plugin config if Grav is installed in a subdirectory (e.g. `/blog`).
 
 ---
 
@@ -192,6 +198,16 @@ Or partial update (just title or just content):
   "folder": "02.blog",
   "filename": "my-post.md",
   "title": "New Title Only"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Article updated",
+  "url": "/blog/my-post"
 }
 ```
 
@@ -220,6 +236,16 @@ Update individual fields without replacing entire content:
 | `content` | string | Article body (markdown) |
 | `date` | string | Publication date (YYYY-MM-DD) |
 | `published` | boolean | Published status |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Article patched",
+  "url": "/blog/my-post"
+}
+```
 
 ---
 
@@ -264,7 +290,8 @@ Images larger than `image_max_width` are automatically compressed.
 ```json
 {
   "success": true,
-  "message": "Article deleted"
+  "message": "Article deleted",
+  "url": "/blog/my-post"
 }
 ```
 
